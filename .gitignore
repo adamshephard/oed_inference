@@ -1,0 +1,12 @@
+# Weights
+**/*.tar
+
+# Images/npy etc
+**/*.dat
+**/*.npy
+**/*.png
+
+# WSIs
+**/*.svs
+**/*.ndpi
+**/*.mrxs
