@@ -1,8 +1,8 @@
 # Transformer-based Model for Oral Epithelial Dysplasia Segmentation
 
-This repository provides the inference code for the models used for predicting slide-level malignancy transformation in OED. Link to preprint [here](https://arxiv.org/abs/2311.05452). <br />
+This repository provides the inference code for the models used for segmenting dysplasia in OED. Link to preprint [here](https://arxiv.org/abs/2311.05452). <br />
 
-We have used the TIAtoolbox (see paper [here](https://www.nature.com/articles/s43856-022-00186-5)) Semantic Segmentor Engine in the below script for processing. 
+We have used the TIAToolbox (see paper [here](https://www.nature.com/articles/s43856-022-00186-5)) Semantic Segmentor Engine in the below script for processing. 
 
 ## Set Up Environment
 

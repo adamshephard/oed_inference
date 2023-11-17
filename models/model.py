@@ -27,42 +27,45 @@ class TransUNet(ModelABC):
         if encoder_backbone_name.find('R50') != -1:
             config_vit.patches.grid = (int(img_size / patch_size), int(img_size / patch_size))
         self.model = ViT_seg(config_vit, img_size=img_size, num_classes=nr_layers, freeze=False).cuda()
+        # self.model.load_from(weights=np.load(f'/data/ANTICIPATE/dyplasia_detection/dysplasia_detector/pretrained/ViT_model_weights/imagenet21k/{encoder_backbone_name}.npz'))
         if weights is not None:
             saved_state_dict = torch.load(weights)["desc"]
             saved_state_dict = convert_pytorch_checkpoint(saved_state_dict)
-            self.model.load_state_dict(saved_state_dict, strict=False) 
-
-
+            saved_state_dict2 = saved_state_dict.copy()
+            for k, v in saved_state_dict.items():
+                if k.startswith('model.'):
+                    saved_state_dict2.pop(k)
+                    saved_state_dict2[k[6:]] = v
+            self.model.load_state_dict(saved_state_dict2, strict=True)#False) 
+                                
     def forward(self: ModelABC, img_list: list) -> torch.nn.Module:
         """Model forward function."""
         # must be rgb input
         imgs = img_list / 255.0  # to 0-1 range
         out = self.model(imgs)
         # out = crop_op(out, [92, 92])
+        # out = crop_op(out[0], [184, 184])
         out = crop_op(out, [184, 184])
         out_dict = OrderedDict()
         out_dict['ls'] = out
         return out_dict
 
-# @staticmethod
-#     # skipcq: PYL-W0221  # noqa: ERA001
-#     def postproc(raw_maps: list[np.ndarray]) -> tuple[np.ndarray, dict]:
-#         """Post-processing script for image tiles.
+    @staticmethod
+    # skipcq: PYL-W0221  # noqa: ERA001
+    def postproc(raw_maps: np.ndarray) -> np.ndarray:
+        """Post-processing script for image tiles.
 
-#         Args:
-#             raw_maps (list(:class:`numpy.ndarray`)):
-#                 A list of prediction outputs of each head and assumed to
-#                 be in the order of [ls] (match with the output
-#                 of `infer_batch`).
+        Args:
+            raw_maps (:class:`numpy.ndarray`):
+                Prediction output
 
-#         Returns:
-#             tuple:
-#                 - :class:`numpy.ndarray` - Layer map:
-#                     Pixel-wise nuclear layer segmentation prediction.
+        Returns:
+            :class:`numpy.ndarray` - Layer map:
+                Pixel-wise nuclear layer segmentation prediction.
 
-#         """
-#         ls_map = raw_maps
-#         return ls_map
+        """
+        ls_map = raw_maps
+        return ls_map
     
     @staticmethod
     def infer_batch(model: nn.Module, batch_data: np.ndarray, on_gpu: bool) -> np.ndarray:
@@ -101,14 +104,12 @@ class TransUNet(ModelABC):
             pred_dict = OrderedDict(
                 [[k, v.permute(0, 2, 3, 1).contiguous()] for k, v in pred_dict.items()],
             )
-            if "ls" in pred_dict:
-                layer_map = F.softmax(pred_dict["ls"], dim=-1)
-                # layer_map = pred_dict["ls"][...,1]
-                # layer_map = torch.argmax(layer_map, dim=-1, keepdim=True)
-                # layer_map = layer_map.type(torch.float32)
-                pred_dict["ls"] = layer_map
-            # if pred_vendor is not None:
-            #     pred_dict["vendor"] = pred_vendor
-            pred_output = torch.cat(list(pred_dict.values()), -1)
-        return pred_output.cpu().numpy()
+            layer_map = F.softmax(pred_dict["ls"], dim=-1)
+            # keep pixel level values
+        return [layer_map.cpu().numpy()]
+        #     # take max value
+        #     layer_map = torch.argmax(layer_map, dim=-1)#, keepdim=True)
+        #     pred_dict["ls"] = layer_map
+        #     pred_output = pred_dict["ls"]
+        # return [pred_output.cpu().numpy().astype("uint8")]
 
